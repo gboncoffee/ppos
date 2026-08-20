@@ -12,9 +12,8 @@
 #include <string.h>
 #include <valgrind/valgrind.h>
 
-struct task_t   kernel_task;
-struct task_t*  current;
-struct queue_t* ready;
+struct task_t  kernel_task;
+struct task_t* current;
 
 int uid;
 
@@ -31,11 +30,6 @@ void task_init()
     // 0 initialize so we don't accidentaly try to free the stack or something
     // like that in the future.
     memset(&kernel_task.context, 0, sizeof(kernel_task.context));
-
-    ready = queue_create(PPOS_CONCURRENT_TASKS);
-    assert(ready != NULL);
-
-    queue_add(ready, (void*) &kernel_task);
 }
 
 void task_term()
@@ -61,7 +55,6 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
 
     ctx_create(&task->context, entry, arg, stack, PPOS_STACK_SIZE);
 
-    queue_add(ready, (void*) task);
     uid += 1;
     task->id     = uid;
     task->parent = current;
@@ -84,7 +77,6 @@ int task_destroy(struct task_t* task)
 
     VALGRIND_STACK_DEREGISTER(task->valgrind_id);
 
-    queue_del(ready, task);
     free(task);
 
     return NOERROR;
