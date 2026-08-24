@@ -8,12 +8,14 @@
 
 #include <assert.h>
 #include <queue.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <valgrind/valgrind.h>
 
-struct task_t  kernel_task;
-struct task_t* current;
+struct task_t          kernel_task;
+struct task_t*         current;
+extern struct queue_t* ready;
 
 int uid;
 
@@ -61,6 +63,8 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
     task->name   = name;
     task->status = TaskStatusReady;
 
+    queue_add(ready, task);
+
     return task;
 }
 
@@ -68,9 +72,8 @@ int task_destroy(struct task_t* task)
 {
     if (task == NULL)
         return ERROR;
-    // TODO.
-    //    if (task->status != TaskStatusFinished)
-    //        return ERROR;
+    if (task->status != TaskStatusFinished)
+        return ERROR;
 
     if (task->context.stack != NULL)
         free(task->context.stack);
@@ -107,8 +110,6 @@ int task_switch(struct task_t* task)
     struct task_t* c = current;
     current          = task;
 
-    c->status    = TaskStatusWaiting;
-    task->status = TaskStatusRunning;
     ctx_switch(&c->context, &task->context);
 
     return NOERROR;

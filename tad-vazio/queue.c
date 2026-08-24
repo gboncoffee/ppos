@@ -69,18 +69,27 @@ int queue_del(struct queue_t* queue, void* item)
 {
     if (queue == NULL)
         return ERROR;
-    node_t** prev = &queue->head;
-    node_t*  node = queue->head;
+    // Works because of the layout of the structs.
+    struct node_t* parent = (struct node_t*) queue;
+    struct node_t* node   = queue->head;
     while (node != NULL) {
         if (node->item == item) {
-            *prev = node->next;
+            parent->next = node->next;
             if (queue->it == node)
                 queue->it = node->next;
+            if (queue->tail == node) {
+                if (parent == (struct node_t*) queue) {
+                    queue->head = NULL;
+                    queue->tail = NULL;
+                } else {
+                    queue->tail = parent;
+                }
+            }
             free(node);
             return NOERROR;
         }
-        prev = &node->next;
-        node = node->next;
+        parent = node;
+        node   = node->next;
     }
 
     return ERROR;
