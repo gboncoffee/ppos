@@ -1,3 +1,4 @@
+// GRR20235159 Gabriel Gioia de Brito
 // PingPongOS - PingPong Operating System
 // © Prof. Carlos A. Maziero, DINF UFPR
 // Versão 2.1 -- 06/2026
@@ -30,6 +31,8 @@ struct task_t {
     struct queue_t* waiting_queue;
     int             id; // identificador da tarefa
     int             valgrind_id;
+    int             nice;
+    int             prio;
     TaskStatus      status;
 };
 

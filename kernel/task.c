@@ -1,3 +1,4 @@
+// GRR20235159 Gabriel Gioia de Brito
 // PingPongOS - PingPong Operating System
 
 // Este arquivo PODE/DEVE ser alterado.
@@ -40,7 +41,7 @@ void task_term()
 
 struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
 {
-    struct task_t* task = malloc(sizeof(*task));
+    struct task_t* task = calloc(1, sizeof(*task));
     if (task == NULL)
         return NULL;
 
@@ -70,9 +71,7 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
 
 int task_destroy(struct task_t* task)
 {
-    if (task == NULL)
-        return ERROR;
-    if (task->status != TaskStatusFinished)
+    if (task == NULL || task->status != TaskStatusFinished)
         return ERROR;
 
     if (task->context.stack != NULL)
@@ -97,6 +96,7 @@ char* task_name(struct task_t* task)
 {
     if (task == NULL)
         task = current;
+
     return task->name;
 }
 
