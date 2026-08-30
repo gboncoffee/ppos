@@ -14,6 +14,11 @@ unsigned long         ctime;
 extern struct task_t* current;
 extern struct task_t  kernel_task;
 
+unsigned int time()
+{
+    return ctime;
+}
+
 void tick(int arg)
 {
     (void) arg;
@@ -39,9 +44,4 @@ void time_init()
 void time_term()
 {
     hw_timer(0, 0);
-}
-
-unsigned int time()
-{
-    return ctime;
 }

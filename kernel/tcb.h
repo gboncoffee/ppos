@@ -21,6 +21,7 @@ typedef enum {
     TaskStatusReady,
     TaskStatusRunning,
     TaskStatusWaiting,
+    TaskStatusSleeping,
     TaskStatusFinished
 } TaskStatus;
 
@@ -30,7 +31,7 @@ struct task_t {
     char*           name; // nome da tarefa
     struct task_t*  parent;
     struct queue_t* waiting_queue;
-    struct queue_t* waiting_on_queue;
+    struct queue_t* waiting_on_queue; // tarefas esperando por essa.
     unsigned long   wall_start; // wall time de quando ela começou
     // wall time da última vez que ela ganhou a cpu, ou o wall time total caso
     // ela já tenha finalizado
@@ -43,6 +44,7 @@ struct task_t {
     int           nice;
     int           prio;
     int           quantum;
+    int           wake_on;
     TaskStatus    status;
     bool          is_system;
 };

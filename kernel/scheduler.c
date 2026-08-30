@@ -22,6 +22,9 @@ void sched_term()
 struct task_t* scheduler(struct queue_t* ready)
 {
     struct task_t* task = queue_head(ready);
+    if (task == NULL)
+        return NULL;
+
     for (struct task_t* it = task; it != NULL; it = queue_next(ready)) {
         if (it->prio < task->prio)
             task = it;

@@ -11,22 +11,26 @@
 #include "time.h"
 
 #include <assert.h>
+#include <hardware/cpu.h>
 #include <pplibc.h>
 #include <queue.h>
 
 struct queue_t* ready;
+struct queue_t* sleeping;
 
 extern struct task_t* current;
 extern struct task_t  kernel_task;
 
 void dispatcher_init()
 {
-    ready = queue_create();
+    ready    = queue_create();
+    sleeping = queue_create();
 }
 
 void dispatcher_term()
 {
     queue_destroy(ready);
+    queue_destroy(sleeping);
 }
 
 void user_main(void*);
@@ -39,12 +43,26 @@ void dispatcher()
 
     struct task_t* user_task = task_create("user_main", user_main, NULL);
 
-    while (queue_size(ready) > 0) {
+    for (;;) {
+        // wake sleeping.
+        int t = time();
+        for (struct task_t* wt = queue_head(sleeping); wt != NULL;
+             wt                = queue_next(sleeping)) {
+            if (wt->wake_on <= t)
+                task_awake(wt);
+        }
+
         struct task_t* task = scheduler(ready);
 
         if (task != NULL) {
             kernel_task.cpu_time += time() - kernel_task.wall_last_grab;
             task_run(task);
+        } else {
+            if (queue_size(ready) == 0 && queue_size(sleeping) == 0)
+                break;
+            current = NULL;
+            hw_wfi();
+            continue;
         }
 
         kernel_task.activations += 1;
@@ -109,7 +127,6 @@ void task_yield()
 
 void task_suspend(struct queue_t* queue)
 {
-    current->status = TaskStatusWaiting;
     current->cpu_time += time() - current->wall_last_grab;
 
     if (queue != NULL) {
@@ -149,6 +166,13 @@ int task_wait(struct task_t* task)
         return ERROR;
     if (task->status == TaskStatusFinished)
         return task->exit_code;
+    current->status = TaskStatusWaiting;
     task_suspend(task->waiting_on_queue);
     return task->exit_code;
+}
+
+void task_sleep(int t)
+{
+    current->wake_on = t + time();
+    task_suspend(sleeping);
 }
