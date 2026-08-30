@@ -30,9 +30,11 @@ struct task_t {
     char*           name; // nome da tarefa
     struct task_t*  parent;
     struct queue_t* waiting_queue;
+    struct queue_t* waiting_on_queue;
     unsigned long   wall_start; // wall time de quando ela começou
-    unsigned long
-        wall_last_grab; // wall time da última vez que ela ganhou a cpu
+    // wall time da última vez que ela ganhou a cpu, ou o wall time total caso
+    // ela já tenha finalizado
+    unsigned long wall_last_grab;
     unsigned long cpu_time; // tempo em que ela passou com a cpu
     unsigned long activations;
     int           id; // identificador da tarefa

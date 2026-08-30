@@ -63,11 +63,12 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
     ctx_create(&task->context, entry, arg, stack, PPOS_STACK_SIZE);
 
     uid += 1;
-    task->id         = uid;
-    task->parent     = current;
-    task->name       = name;
-    task->status     = TaskStatusReady;
-    task->wall_start = time();
+    task->id               = uid;
+    task->parent           = current;
+    task->name             = name;
+    task->status           = TaskStatusReady;
+    task->waiting_on_queue = queue_create();
+    task->wall_start       = time();
 
     queue_add(ready, task);
 
@@ -84,6 +85,7 @@ int task_destroy(struct task_t* task)
 
     VALGRIND_STACK_DEREGISTER(task->valgrind_id);
 
+    free(task->waiting_on_queue);
     free(task);
 
     return NOERROR;

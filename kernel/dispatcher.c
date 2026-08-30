@@ -37,7 +37,7 @@ void dispatcher()
     kernel_task.wall_last_grab = kernel_task.wall_start;
     kernel_task.activations    = 1;
 
-    task_create("user_main", user_main, NULL);
+    struct task_t* user_task = task_create("user_main", user_main, NULL);
 
     while (queue_size(ready) > 0) {
         struct task_t* task = scheduler(ready);
@@ -49,19 +49,27 @@ void dispatcher()
 
         kernel_task.activations += 1;
         if (task->status == TaskStatusFinished) {
+            task->wall_last_grab = time() - task->wall_start;
             printk(
                 "PPOS: task %d (%s) %d ms run, %d ms cpu, %d acts, exit "
                 "code %d\n",
                 task->id,
                 task->name,
-                time() - task->wall_start,
+                task->wall_last_grab,
                 task->cpu_time,
                 task->activations,
                 task->exit_code
             );
-            task_destroy(task);
+            struct queue_t* q = task->waiting_on_queue;
+            for (struct task_t* wt = queue_head(q); wt != NULL;
+                 wt                = queue_next(q)) {
+                task_awake(wt);
+            }
         }
     }
+
+    task_destroy(user_task);
+
     kernel_task.cpu_time += time() - kernel_task.wall_last_grab;
     printk(
         "PPOS: task %d (%s) %d ms run, %d ms cpu, %d acts, exit "
@@ -133,4 +141,14 @@ void task_exit(int exit_code)
 
     kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);
+}
+
+int task_wait(struct task_t* task)
+{
+    if (task == NULL)
+        return ERROR;
+    if (task->status == TaskStatusFinished)
+        return task->exit_code;
+    task_suspend(task->waiting_on_queue);
+    return task->exit_code;
 }
