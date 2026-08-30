@@ -50,7 +50,8 @@ void task_run(struct task_t* task)
 {
     assert(queue_del(ready, task) == NOERROR);
 
-    task->status = TaskStatusRunning;
+    task->status  = TaskStatusRunning;
+    task->quantum = 10;
     task_switch(task);
 }
 

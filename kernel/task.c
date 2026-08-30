@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <queue.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,11 +23,12 @@ int uid;
 
 void task_init()
 {
-    uid                = 0;
-    kernel_task.id     = 0;
-    kernel_task.parent = &kernel_task; // It created itself.
-    kernel_task.name   = "kernel";
-    kernel_task.status = TaskStatusRunning;
+    uid                   = 0;
+    kernel_task.id        = 0;
+    kernel_task.parent    = &kernel_task; // It created itself.
+    kernel_task.name      = "kernel";
+    kernel_task.status    = TaskStatusRunning;
+    kernel_task.is_system = true;
 
     current = &kernel_task;
 

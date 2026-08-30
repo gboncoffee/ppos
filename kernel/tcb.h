@@ -13,6 +13,7 @@
 #include "ctx.h"
 
 #include <queue.h>
+#include <stdbool.h>
 
 #define PPOS_STACK_SIZE (4096 * 16)
 
@@ -33,7 +34,9 @@ struct task_t {
     int             valgrind_id;
     int             nice;
     int             prio;
+    int             quantum;
     TaskStatus      status;
+    bool            is_system;
 };
 
 #define PPOS_CONCURRENT_TASKS (1024)
