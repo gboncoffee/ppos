@@ -7,6 +7,8 @@
 
 #include "task.h"
 
+#include "time.h"
+
 #include <assert.h>
 #include <queue.h>
 #include <stdbool.h>
@@ -61,10 +63,11 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
     ctx_create(&task->context, entry, arg, stack, PPOS_STACK_SIZE);
 
     uid += 1;
-    task->id     = uid;
-    task->parent = current;
-    task->name   = name;
-    task->status = TaskStatusReady;
+    task->id         = uid;
+    task->parent     = current;
+    task->name       = name;
+    task->status     = TaskStatusReady;
+    task->wall_start = time();
 
     queue_add(ready, task);
 

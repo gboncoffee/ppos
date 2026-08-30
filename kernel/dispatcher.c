@@ -8,10 +8,11 @@
 
 #include "scheduler.h"
 #include "task.h"
+#include "time.h"
 
 #include <assert.h>
+#include <pplibc.h>
 #include <queue.h>
-#include <stdio.h>
 
 struct queue_t* ready;
 
@@ -32,18 +33,46 @@ void user_main(void*);
 
 void dispatcher()
 {
+    kernel_task.wall_start     = time();
+    kernel_task.wall_last_grab = kernel_task.wall_start;
+    kernel_task.activations    = 1;
+
     task_create("user_main", user_main, NULL);
 
     while (queue_size(ready) > 0) {
         struct task_t* task = scheduler(ready);
 
-        if (task != NULL)
+        if (task != NULL) {
+            kernel_task.cpu_time += time() - kernel_task.wall_last_grab;
             task_run(task);
+        }
 
+        kernel_task.activations += 1;
         if (task->status == TaskStatusFinished) {
+            printk(
+                "PPOS: task %d (%s) %d ms run, %d ms cpu, %d acts, exit "
+                "code %d\n",
+                task->id,
+                task->name,
+                time() - task->wall_start,
+                task->cpu_time,
+                task->activations,
+                task->exit_code
+            );
             task_destroy(task);
         }
     }
+    kernel_task.cpu_time += time() - kernel_task.wall_last_grab;
+    printk(
+        "PPOS: task %d (%s) %d ms run, %d ms cpu, %d acts, exit "
+        "code %d\n",
+        kernel_task.id,
+        kernel_task.name,
+        time() - kernel_task.wall_start,
+        kernel_task.cpu_time,
+        kernel_task.activations,
+        0
+    );
 }
 
 void task_run(struct task_t* task)
@@ -52,25 +81,35 @@ void task_run(struct task_t* task)
 
     task->status  = TaskStatusRunning;
     task->quantum = 10;
+    task->activations += 1;
+    task->wall_last_grab = time();
+    if (task->wall_start == 0)
+        task->wall_start = task->wall_last_grab;
     task_switch(task);
 }
 
 void task_yield()
 {
     current->status = TaskStatusReady;
+    current->cpu_time += time() - current->wall_last_grab;
+
     queue_add(ready, current);
+
+    kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);
 }
 
 void task_suspend(struct queue_t* queue)
 {
     current->status = TaskStatusWaiting;
+    current->cpu_time += time() - current->wall_last_grab;
 
     if (queue != NULL) {
         current->waiting_queue = queue;
         queue_add(queue, current);
     }
 
+    kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);
 }
 
@@ -87,6 +126,11 @@ void task_awake(struct task_t* task)
 
 void task_exit(int exit_code)
 {
-    current->status = TaskStatusFinished;
+    current->status    = TaskStatusFinished;
+    current->exit_code = exit_code;
+
+    current->cpu_time += time() - current->wall_last_grab;
+
+    kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);
 }

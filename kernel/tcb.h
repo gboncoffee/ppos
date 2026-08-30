@@ -30,13 +30,19 @@ struct task_t {
     char*           name; // nome da tarefa
     struct task_t*  parent;
     struct queue_t* waiting_queue;
-    int             id; // identificador da tarefa
-    int             valgrind_id;
-    int             nice;
-    int             prio;
-    int             quantum;
-    TaskStatus      status;
-    bool            is_system;
+    unsigned long   wall_start; // wall time de quando ela começou
+    unsigned long
+        wall_last_grab; // wall time da última vez que ela ganhou a cpu
+    unsigned long cpu_time; // tempo em que ela passou com a cpu
+    unsigned long activations;
+    int           id; // identificador da tarefa
+    int           valgrind_id;
+    int           exit_code;
+    int           nice;
+    int           prio;
+    int           quantum;
+    TaskStatus    status;
+    bool          is_system;
 };
 
 #define PPOS_CONCURRENT_TASKS (1024)
