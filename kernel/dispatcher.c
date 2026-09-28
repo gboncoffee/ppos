@@ -5,7 +5,6 @@
 // Dispatcher: gerencia os estados das tarefas.
 
 #include "dispatcher.h"
-
 #include "scheduler.h"
 #include "task.h"
 #include "time.h"
@@ -20,6 +19,8 @@ struct queue_t* sleeping;
 
 extern struct task_t* current;
 extern struct task_t  kernel_task;
+void                  lock_kernel();
+void                  unlock_kernel();
 
 void dispatcher_init()
 {
@@ -119,9 +120,12 @@ void task_yield()
     current->status = TaskStatusReady;
     current->cpu_time += time() - current->wall_last_grab;
 
+    lock_kernel();
     queue_add(ready, current);
+    unlock_kernel();
 
     kernel_task.wall_last_grab = time();
+
     task_switch(&kernel_task);
 }
 
@@ -129,10 +133,12 @@ void task_suspend(struct queue_t* queue)
 {
     current->cpu_time += time() - current->wall_last_grab;
 
+    lock_kernel();
     if (queue != NULL) {
         current->waiting_queue = queue;
         queue_add(queue, current);
     }
+    unlock_kernel();
 
     kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);
