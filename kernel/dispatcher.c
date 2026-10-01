@@ -22,6 +22,8 @@ extern struct task_t  kernel_task;
 void                  lock_kernel();
 void                  unlock_kernel();
 
+extern int living_tasks;
+
 void dispatcher_init()
 {
     ready    = queue_create();
@@ -58,8 +60,11 @@ void dispatcher()
         if (task != NULL) {
             kernel_task.cpu_time += time() - kernel_task.wall_last_grab;
             task_run(task);
+            // Ensure kernel is unlocked before going on: sleeping on a
+            // semaphore can keep the kernel locked.
+            unlock_kernel();
         } else {
-            if (queue_size(ready) == 0 && queue_size(sleeping) == 0)
+            if (living_tasks <= 0)
                 break;
             current = NULL;
             hw_wfi();
@@ -84,6 +89,7 @@ void dispatcher()
                  wt                = queue_next(q)) {
                 task_awake(wt);
             }
+            living_tasks -= 1;
         }
     }
 
@@ -129,16 +135,22 @@ void task_yield()
     task_switch(&kernel_task);
 }
 
-void task_suspend(struct queue_t* queue)
+void prepare_suspension(struct queue_t* queue)
 {
     current->cpu_time += time() - current->wall_last_grab;
-
-    lock_kernel();
     if (queue != NULL) {
         current->waiting_queue = queue;
         queue_add(queue, current);
     }
-    unlock_kernel();
+
+    kernel_task.wall_last_grab = time();
+}
+
+void task_suspend(struct queue_t* queue)
+{
+    lock_kernel();
+
+    prepare_suspension(queue);
 
     kernel_task.wall_last_grab = time();
     task_switch(&kernel_task);

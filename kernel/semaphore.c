@@ -11,6 +11,7 @@
 #include <queue.h>
 #include <stdlib.h>
 
+extern struct task_t  kernel_task;
 extern struct task_t* current;
 void                  lock_kernel();
 void                  unlock_kernel();
@@ -84,6 +85,11 @@ int sem_destroy(int id)
         goto release;
     }
 
+    for (struct task_t* task = queue_head(semaphore->awaiting); task != NULL;
+         task                = queue_head(semaphore->awaiting)) {
+        task_awake(task);
+    }
+
     queue_destroy(semaphore->awaiting);
     free(semaphore);
     map_del(semaphores, id);
@@ -94,31 +100,32 @@ release:
     return ret;
 }
 
+void prepare_suspension(struct queue_t* queue);
+
 int sem_down(int id)
 {
     lock_kernel();
     volatile struct semaphore_t* semaphore =
         (volatile struct semaphore_t*) map_get(semaphores, id);
-    unlock_kernel();
 
-    if (semaphore == NULL)
+    if (semaphore == NULL) {
+        unlock_kernel();
         return -1;
+    }
 
     spin_lock(&semaphore->lock);
 
-    int await = 0;
     semaphore->value -= 1;
-    if (semaphore->value < 0)
-        await = 1;
-
-    spin_unlock(&semaphore->lock);
-
-    if (await) {
+    if (semaphore->value < 0) {
         current->status = TaskStatusWaiting;
-        task_suspend(semaphore->awaiting);
+        prepare_suspension(semaphore->awaiting);
+        spin_unlock(&semaphore->lock);
+        task_switch(&kernel_task);
+        lock_kernel();
+    } else {
+        spin_unlock(&semaphore->lock);
     }
 
-    lock_kernel();
     volatile struct semaphore_t* s =
         (volatile struct semaphore_t*) map_get(semaphores, id);
     unlock_kernel();

@@ -23,6 +23,7 @@ void                   lock_kernel();
 void                   unlock_kernel();
 
 int uid;
+int living_tasks; // Don't count kernel_task.
 
 void task_init()
 {
@@ -38,6 +39,8 @@ void task_init()
     // 0 initialize so we don't accidentaly try to free the stack or something
     // like that in the future.
     memset(&kernel_task.context, 0, sizeof(kernel_task.context));
+
+    living_tasks = 0;
 }
 
 void task_term()
@@ -74,6 +77,8 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
     task->wall_start       = time();
 
     queue_add(ready, task);
+
+    living_tasks += 1;
 
 release:
     unlock_kernel();
