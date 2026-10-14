@@ -5,14 +5,13 @@
 
 // Gerência básica de tarefas.
 
+#include "memory.h"
 #include "task.h"
 #include "time.h"
 
 #include <assert.h>
 #include <queue.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <valgrind/valgrind.h>
 
@@ -51,17 +50,19 @@ struct task_t* task_create(char* name, void (*entry)(void*), void* arg)
 {
     lock_kernel();
 
-    struct task_t* task = calloc(1, sizeof(*task));
+    struct task_t* task = mem_alloc(sizeof(*task));
     if (task == NULL)
         goto release;
+    memset(task, 0, sizeof(*task));
 
-    // Calloc so we don't spill memory from other tasks. Not needed in a toy OS
-    // without memory protection but it just *feels* right to.
-    void* stack = calloc(PPOS_STACK_SIZE, 1);
+    void* stack = mem_alloc(PPOS_STACK_SIZE);
     if (stack == NULL) {
-        free(task);
+        mem_free(task);
         goto release;
     }
+    // Memset so we don't spill memory from other tasks. Not needed in a toy OS
+    // without memory protection but it just *feels* right to.
+    memset(stack, 0, PPOS_STACK_SIZE);
 
     task->valgrind_id =
         VALGRIND_STACK_REGISTER(stack, stack + (PPOS_STACK_SIZE - 1));
@@ -96,12 +97,12 @@ int task_destroy(struct task_t* task)
     }
 
     if (task->context.stack != NULL)
-        free(task->context.stack);
+        mem_free(task->context.stack);
 
     VALGRIND_STACK_DEREGISTER(task->valgrind_id);
 
-    free(task->waiting_on_queue);
-    free(task);
+    mem_free(task->waiting_on_queue);
+    mem_free(task);
 
 release:
     unlock_kernel();

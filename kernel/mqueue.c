@@ -5,11 +5,11 @@
 // Gerência de filas de mensagens
 
 #include "dispatcher.h"
+#include "memory.h"
 #include "semaphore.h"
 
 #include <map.h>
 #include <queue.h>
-#include <stdlib.h>
 #include <string.h>
 
 void lock_kernel();
@@ -38,10 +38,12 @@ void mqueue_term()
 int mqueue_create(int max_msgs, int msg_size)
 {
     lock_kernel();
-    mqueue_t* mq = calloc(1, sizeof(*mq));
+    mqueue_t* mq = mem_alloc(sizeof(*mq));
     unlock_kernel();
     if (mq == NULL)
         return -1;
+    memset(mq, 0, sizeof(*mq));
+    mq->msg_size = msg_size;
 
     lock_kernel();
     mq->buf = queue_create();
@@ -76,7 +78,7 @@ free_buf:
     unlock_kernel();
 free_mq:
     lock_kernel();
-    free(mq);
+    mem_free(mq);
     unlock_kernel();
     return -1;
 }
@@ -93,7 +95,7 @@ int mqueue_destroy(int id)
     map_del(mqueues, id);
     for (void* buffer = queue_head(mq->buf); buffer != NULL;
          buffer       = queue_next(mq->buf)) {
-        free(buffer);
+        mem_free(buffer);
     }
     queue_destroy(mq->buf);
     unlock_kernel();
@@ -103,7 +105,7 @@ int mqueue_destroy(int id)
     sem_destroy(mq->sem_produce);
 
     lock_kernel();
-    free(mq);
+    mem_free(mq);
     unlock_kernel();
 
     return 0;
@@ -133,8 +135,8 @@ int mqueue_send(int id, void* msg)
     mq = (mqueue_t*) map_get(mqueues, id);
     if (mq == NULL)
         goto release;
-    char* msg_on_queue = calloc(1, mq->msg_size);
-    if (msg != NULL) {
+    char* msg_on_queue = mem_alloc(mq->msg_size);
+    if (msg_on_queue != NULL) {
         memcpy(msg_on_queue, msg, mq->msg_size);
         queue_add(mq->buf, msg_on_queue);
         ret = 0;
@@ -177,7 +179,7 @@ int mqueue_recv(int id, void* msg)
     queue_del(mq->buf, buffer);
     if (buffer != NULL) {
         memcpy(msg, buffer, mq->msg_size);
-        free(buffer);
+        mem_free(buffer);
         ret = 0;
     }
 

@@ -5,11 +5,12 @@
 // Semáforos e spinlocks
 
 #include "dispatcher.h"
+#include "memory.h"
 #include "tcb.h"
 
 #include <map.h>
 #include <queue.h>
-#include <stdlib.h>
+#include <string.h>
 
 extern struct task_t  kernel_task;
 extern struct task_t* current;
@@ -51,9 +52,10 @@ int sem_create(int value)
 
     int ret = -1;
 
-    struct semaphore_t* semaphore = calloc(1, sizeof(*semaphore));
+    struct semaphore_t* semaphore = mem_alloc(sizeof(*semaphore));
     if (semaphore == NULL)
         goto release;
+    memset(semaphore, 0, sizeof(*semaphore));
 
     semaphore->awaiting = queue_create();
     if (semaphore->awaiting == NULL)
@@ -67,7 +69,7 @@ int sem_create(int value)
 
     queue_destroy(semaphore->awaiting);
 free_semaphore:
-    free(semaphore);
+    mem_free(semaphore);
 release:
     unlock_kernel();
     return ret;
@@ -91,7 +93,7 @@ int sem_destroy(int id)
     }
 
     queue_destroy(semaphore->awaiting);
-    free(semaphore);
+    mem_free(semaphore);
     map_del(semaphores, id);
 
     ret = 0;
